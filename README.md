@@ -11,7 +11,7 @@
 ## Informations complémentaires
 
 __**Nom**__ : Tic Tac Toe<br>
-__**Version**__ : `v1.1`<br>
+__**Version**__ : `v1.2`<br>
 __**UUID**__ : `14b34484-0b34-d080-71ee-13b3a8bd18c2`<br>
 __**Version de Python**__ : Python 1.10<br>
 __**Developpeurs**__ : Luzog<br>

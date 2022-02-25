@@ -12,7 +12,7 @@ from random import randint, choice, shuffle
 
 
 GAME_UUID = UUID.parseUUID("14b34484-0b34-d080-71ee-13b3a8bd18c2")
-GAME_VERSION = manager.GameVersion("v1.1")
+GAME_VERSION = manager.GameVersion("v1.2")
 
 
 class TicTacToe:
@@ -485,7 +485,7 @@ class Scores(Tk):
 
 CONTINUE = "\n\nIf you Continue, you will not be able to get rewards and update the ranking."
 try:
-    manager.setup(GAME_UUID, GAME_VERSION, up_to_date=False)
+    manager.setup(GAME_UUID, GAME_VERSION, __update=False)
 except manager.UserParameterExpected as e:
     Error("UserParameterExpected", str(e) + "\nYou must run the game from the Launcher to avoid this error." + CONTINUE)
 except DatabaseConnexionError as e:

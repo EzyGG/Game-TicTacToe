@@ -225,9 +225,24 @@ class Resource:
         self.creator: str = creator
         self.creation = creation
 
-    def save(self, dir_path: str = "", name: str = None, type: str = None):
+    def save_if_doesnt_exists(self, dir_path: str = "", name: str = None, type: str = None):
         t = self.type if type is None else type
-        with open(f"{dir_path}{'/' if str(dir_path) else ''}{self.name if name is None else name}{'.' if str(t) else ''}{t}".replace("//", "/"), "wb") as f:
+        try:
+            if f"{self.name if name is None else name}{'.' if str(t) else ''}{t}" in os.listdir(str(dir_path).replace("\\", "/").replace("//", "/")):
+                return
+        except FileNotFoundError:
+            pass
+        self.save_by_erasing(dir_path, name, type)
+
+    def save_by_erasing(self, dir_path: str = "", name: str = None, type: str = None):
+        t = self.type if type is None else type
+        path = str(dir_path).replace("\\", "/").replace("//", "/")
+        for i, p in enumerate(path.split("/")):
+            try:
+                os.mkdir("/".join(path.split("/")[:i + 1]))
+            except FileExistsError:
+                pass
+        with open(f"{path}{'/' if str(path) else ''}{self.name if name is None else name}{'.' if str(t) else ''}{t}".replace("//", "/"), "wb") as f:
             f.write(self.bin)
 
 
@@ -350,13 +365,24 @@ def update():
         except FileNotFoundError:
             os.rename("main.exe", "main.exe.temp")
         for r in import_resources(__game_info.uuid):
-            r.save()
+            r.save_by_erasing()
         try:
-            import_resource("icon", "icon").save()
+            import_resource("icon", "icon").save_by_erasing()
         except Exception:
             pass
         subprocess.call(["main", *sys.argv[1:]])
         sys.exit()
+
+
+def import_missing_resources():
+    if ".dev" in os.listdir():
+        return
+    for r in import_resources(__game_info.uuid):
+        r.save_if_doesnt_exists()
+    try:
+        import_resource("icon", "icon").save_if_doesnt_exists()
+    except Exception:
+        pass
 
 
 def clear_temp_files():
@@ -370,8 +396,8 @@ def clear_temp_files():
                 pass
 
 
-def setup(game_uuid: UUID, version: GameVersion, up_to_date: bool = True,  initialize_client: bool = True,
-          clear_temp: bool = True):
+def setup(game_uuid: UUID, version: GameVersion, __update: bool = True,  __client_initialization: bool = True,
+          __clear_temp_files: bool = True, __import_missing_resources: bool = True):
     global __current_version, __game_info
     __current_version = version
 
@@ -383,13 +409,16 @@ def setup(game_uuid: UUID, version: GameVersion, up_to_date: bool = True,  initi
     if not __game_info.exists():
         raise GameNotFound(game_uuid)
 
-    if clear_temp:
+    if __clear_temp_files:
         clear_temp_files()
 
-    if up_to_date:
+    if __update:
         update()
 
-    if initialize_client:
+    if __import_missing_resources:
+        import_missing_resources()
+
+    if __client_initialization:
         client_initialization()
 
 
