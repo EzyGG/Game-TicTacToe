@@ -1,5 +1,3 @@
-import sys
-
 import ezyapi.game_manager as manager
 from ezyapi.mysql_connection import DatabaseConnexionError
 from ezyapi.sessions import UserNotFoundException
@@ -12,7 +10,7 @@ from random import randint, choice, shuffle
 
 
 GAME_UUID = UUID.parseUUID("14b34484-0b34-d080-71ee-13b3a8bd18c2")
-GAME_VERSION = manager.GameVersion("v1.2")
+GAME_VERSION = manager.GameVersion("v1.3")
 
 
 class TicTacToe:

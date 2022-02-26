@@ -63,27 +63,40 @@ class ResourceNotFound(Exception):
 
 
 class GameVersion:
-    def __init__(self, version_to_parse: str | int | float | list[int] = None, reduce_indicator: bool = False):
-        self.indicator: list[int] = []
+    def __init__(self, version_to_parse: str | int | float | list = None, reduce_indicator: bool = False):
+        self.indicator: list[str or int] = []
         self.set_version(version_to_parse, reduce_indicator)
 
     @staticmethod
     def parse_version(version_to_parse: str | int | float, reduce_indicator: bool = False, raw: bool = False):
-        version = str(version_to_parse) if version_to_parse else "0.0"
+        version = str(version_to_parse).lower() if version_to_parse else "v0.0"
         version = version.replace(" ", "").replace("\n", "").replace("+", "").replace(",", ".").replace("'", ".") \
             .replace("/", ".").replace("*", ".").replace("_", ".")
-        if version.startswith("v"):
+        letter = "a" if version.startswith("a") or version.startswith("alpha")\
+            else "b" if version.startswith("b") or version.startswith("beta")\
+            else "d" if version.startswith("d") or version.startswith("delta")\
+            else "v"
+        if version.startswith("version"):
+            version = version[7:]
+        elif version.startswith("alpha") or version.startswith("delta"):
+            version = version[5:]
+        elif version.startswith("beta"):
+            version = version[4:]
+        elif version.startswith("ver"):
+            version = version[3:]
+        elif version.startswith("v") or version.startswith("a") or version.startswith("b") or version.startswith("d"):
             version = version[1:]
         if not version.replace(".", "").replace("-", ""):
-            version += "0"
+            version += "0.0"
         if not version.replace(".", "").replace("-", "").isnumeric():
             raise FormatError(version)
-        indicator = [0 if i == "" else int(i) for i in version.split(".")]
+        indicator: list[str or int] = [0 if i == "" else int(i) for i in version.split(".")]
+        indicator.insert(0, letter)
         if reduce_indicator:
             GameVersion.reduce_indicator(indicator=indicator)
         return indicator if raw else GameVersion(indicator)
 
-    def reduce_indicator(self=None, indicator: list[int] = None):
+    def reduce_indicator(self=None, indicator: list = None):
         if indicator is not None:
             ind = indicator
         elif self is not None:
@@ -94,7 +107,7 @@ class GameVersion:
             if ind[i]: break
             del ind[i]
 
-    def set_precision(self=None, indicator: list[int] = None, precision: int = -1):
+    def set_precision(self=None, indicator: list = None, precision: int = -1):
         if precision < 0:
             return
         if indicator is not None:
@@ -108,8 +121,8 @@ class GameVersion:
         for i in range(precision):
             ind.append(ind_origin[i] if len(ind_origin) > i else 0)
 
-    def set_version(self, version_to_parse: str | int | float | list[int] = None, reduce_indicator: bool = False):
-        self.indicator: list[int] = version_to_parse if isinstance(version_to_parse, list) \
+    def set_version(self, version_to_parse: str | int | float | list = None, reduce_indicator: bool = False):
+        self.indicator = version_to_parse if isinstance(version_to_parse, list) \
             else self.parse_version(version_to_parse, reduce_indicator, True)
 
     def get_precision(self):
@@ -129,13 +142,19 @@ class GameVersion:
             for i in range(len(ind) - 1, -1, -1):
                 if ind[i]: break
                 del ind[i]
-        return "v" + ".".join(str(i) for i in ind)
+        fin = ".".join(str(i) for i in ind)
+        return fin.replace(".", "", 1) if len(ind) > 1 else fin
 
     def compare(self, other):
         if not isinstance(other, GameVersion):
             raise TypeError(f"Operators aren't supported between instances of 'GameVersion' and '{type(other)}'")
         p = max(self.get_precision(), other.get_precision())
         for foo, bar in zip(GameVersion(self.get_version(p)).get_indicator(), GameVersion(other.get_version(p)).get_indicator()):
+            if str(foo).isalpha():
+                f = 1 if str(foo).lower() == "a" else 2 if str(foo).lower() == "b" else 3
+                b = 1 if str(bar).lower() == "a" else 2 if str(bar).lower() == "b" else 3
+                if f > b: return 1
+                elif f < b: return -1
             if foo > bar: return 1
             elif foo < bar: return -1
         return 0
@@ -237,16 +256,17 @@ class Resource:
     def save_by_erasing(self, dir_path: str = "", name: str = None, type: str = None):
         t = self.type if type is None else type
         path = str(dir_path).replace("\\", "/").replace("//", "/")
-        for i, p in enumerate(path.split("/")):
-            try:
-                os.mkdir("/".join(path.split("/")[:i + 1]))
-            except FileExistsError:
-                pass
+        if path:
+            for i, p in enumerate(path.split("/")):
+                try:
+                    os.mkdir("/".join(path.split("/")[:i + 1]))
+                except FileExistsError:
+                    pass
         with open(f"{path}{'/' if str(path) else ''}{self.name if name is None else name}{'.' if str(t) else ''}{t}".replace("//", "/"), "wb") as f:
             f.write(self.bin)
 
 
-__API_VERSION: GameVersion = GameVersion("v1.0")
+__API_VERSION: GameVersion = GameVersion("v2.2")
 __current_version: GameVersion = None
 __game_info: GameInfo = None
 __user: sessions.User = None
@@ -365,7 +385,8 @@ def update():
         except FileNotFoundError:
             os.rename("main.exe", "main.exe.temp")
         for r in import_resources(__game_info.uuid):
-            r.save_by_erasing()
+            if r.specification != "game":
+                r.save_by_erasing()
         try:
             import_resource("icon", "icon").save_by_erasing()
         except Exception:
@@ -378,7 +399,8 @@ def import_missing_resources():
     if ".dev" in os.listdir():
         return
     for r in import_resources(__game_info.uuid):
-        r.save_if_doesnt_exists()
+        if r.specification != "game":
+            r.save_if_doesnt_exists()
     try:
         import_resource("icon", "icon").save_if_doesnt_exists()
     except Exception:
