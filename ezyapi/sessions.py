@@ -57,25 +57,13 @@ class User:
         f = connect.fetch(1)[0]
         return self.get_username() if f is None else f
 
-    def set_completename(self, completename: str):
-        connect.execute(f"""UPDATE users SET completename = "{completename}" WHERE uuid="{self.uuid}\"""")
-        connect.commit()
-
     def get_mail(self) -> str:
         connect.execute(f"""SELECT mail FROM users WHERE uuid="{self.uuid}\"""")
         return connect.fetch(1)[0]
 
-    def set_mail(self, mail: str):
-        connect.execute(f"""UPDATE users SET mail = "{mail}" WHERE uuid="{self.uuid}\"""")
-        connect.commit()
-
     def get_password(self) -> str:
         connect.execute(f"""SELECT password FROM users WHERE uuid="{self.uuid}\"""")
         return connect.fetch(1)[0]
-
-    def set_password(self, password: str):
-        connect.execute(f"""UPDATE users SET password = "{password}" WHERE uuid="{self.uuid}\"""")
-        connect.commit()
 
     def get_creation(self):
         connect.execute(f"""SELECT creation FROM users WHERE uuid="{self.uuid}\"""")
@@ -88,10 +76,6 @@ class User:
     def is_frozen(self) -> bool:
         connect.execute(f"""SELECT frozen FROM users WHERE uuid="{self.uuid}\"""")
         return bool(connect.fetch(1)[0])
-
-    def set_frozen(self, frozen: bool):
-        connect.execute(f"""UPDATE users SET frozen = {1 if bool(frozen) else 0} WHERE uuid="{self.uuid}\"""")
-        connect.commit()
 
     def get_lvl(self) -> int:
         connect.execute(f"""SELECT lvl FROM users WHERE uuid="{self.uuid}\"""")
@@ -108,10 +92,6 @@ class User:
     def get_theme(self) -> int:
         connect.execute(f"""SELECT theme FROM users WHERE uuid="{self.uuid}\"""")
         return connect.fetch(1)[0]
-
-    def set_theme(self, theme: int):
-        connect.execute(f"""UPDATE users SET theme = {theme} WHERE uuid="{self.uuid}\"""")
-        connect.commit()
 
     def get_played_games(self) -> int:
         connect.execute(f"""SELECT * FROM sets WHERE player="{self.uuid}\"""")

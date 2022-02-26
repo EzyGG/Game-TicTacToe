@@ -10,7 +10,7 @@ from random import randint, choice, shuffle
 
 
 GAME_UUID = UUID.parseUUID("14b34484-0b34-d080-71ee-13b3a8bd18c2")
-GAME_VERSION = manager.GameVersion("v1.3")
+GAME_VERSION = manager.GameVersion("v1.4")
 
 
 class TicTacToe:
@@ -172,7 +172,7 @@ class TicTacToe:
         if manager.linked() and (self.wins + self.looses):
             try:
                 manager.start_new_game()
-                manager.commit_new_set(GAME_UUID, self.wins >= self.looses, scores.v_total_exp, scores.v_total_gp)
+                manager.commit_new_set(self.wins >= self.looses, scores.v_total_exp, scores.v_total_gp)
             except manager.AlreadyCommitted as e:
                 Error("AlreadyCommitted", str(e) + "\nYou can close now :).")
             except DatabaseConnexionError as e:

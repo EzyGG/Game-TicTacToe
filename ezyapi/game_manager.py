@@ -47,6 +47,11 @@ class NoUserLinked(UserError):
         super().__init__("UserError: There is no user session linked.")
 
 
+class UserFrozen(UserError):
+    def __init__(self):
+        super().__init__("UserError: The user is frozen. He cannot commit games sets.")
+
+
 class AlreadyCommitted(Exception):
     def __init__(self):
         super().__init__("This set is already committed.")
@@ -160,7 +165,7 @@ class GameVersion:
         return 0
 
     def __repr__(self):
-        return f"<ver version='{self.get_version()}' indicator='{self.indicator}'>"
+        return "<ver version='{}' indicator='{}'>".format(self.get_version(), str(self.indicator).replace("'", '"'))
 
     def __str__(self):
         return self.get_version()
@@ -266,7 +271,7 @@ class Resource:
             f.write(self.bin)
 
 
-__API_VERSION: GameVersion = GameVersion("v2.2")
+__API_VERSION: GameVersion = GameVersion("v2.3")
 __current_version: GameVersion = None
 __game_info: GameInfo = None
 __user: sessions.User = None
@@ -288,11 +293,10 @@ def verification():
         raise InaccessibleGame()
     if not linked():
         raise NoUserLinked()
+    if __user.is_frozen():
+        raise UserFrozen()
     if __current_version < __game_info.version:
         raise TooOldVersion(__current_version, __game_info.version)
-
-    if not linked():
-        raise NoUserLinked()
 
 
 def start_new_game():
@@ -333,13 +337,13 @@ def client_initialization():
 
 
 def export_resource(id: str, name: str, type: str, bin: bytes, specification: str, info: str = None,
-                    creator: str = None, resource_version: GameVersion = GameVersion("v1.0")):
+                    creator: str = None, resource_version: GameVersion = GameVersion("v1.0")) -> int:
     connect.execute(f"""INSERT resources(id, name, type, bin, specification, info, resource_version, creator) VALUES ('{id}',
                 '{name}', '{type}', 0x{bin.hex()}, {"NULL" if specification is None else f"'{specification}'"},
                 {"NULL" if info is None else f"'{info}'"}, {resource_version},
                 {"NULL" if creator is None else f"'{creator}'"})""")
     connect.commit()
-    connect.execute(f"""SELECT max(id) FROM resources""")
+    connect.execute(f"""SELECT max(n) FROM resources""")
     return int(connect.fetch(1)[0])
 
 
@@ -360,7 +364,7 @@ def import_resource(id: str | UUID, specification: str) -> Resource:
     return Resource(*fin)
 
 
-def import_resources(id: str | UUID):
+def import_resources(id: str | UUID) -> list[Resource]:
     connect.execute(f"""SELECT id, specification FROM resources WHERE id = '{id}'""")
     return [import_resource(id, sp) for id, sp in connect.fetch()]
 
@@ -418,6 +422,24 @@ def clear_temp_files():
                 pass
 
 
+def get_user():
+    return __user
+
+
+def is_committed():
+    return bool(__committed)
+
+
+def set_user(user: sessions.User):
+    """
+    :raise: ezyapi.sessions.UserNotFoundException
+    """
+    if not user.connected():
+        raise sessions.UserNotFoundException()
+    global __user
+    __user = user
+
+
 def setup(game_uuid: UUID, version: GameVersion, __update: bool = True,  __client_initialization: bool = True,
           __clear_temp_files: bool = True, __import_missing_resources: bool = True):
     global __current_version, __game_info
@@ -444,25 +466,7 @@ def setup(game_uuid: UUID, version: GameVersion, __update: bool = True,  __clien
         client_initialization()
 
 
-def get_user():
-    return __user
-
-
-def set_user(user: sessions.User):
-    """
-    :raise: ezyapi.sessions.UserNotFoundException
-    """
-    if not user.connected():
-        raise sessions.UserNotFoundException()
-    global __user
-    __user = user
-
-
-def is_committed():
-    return bool(__committed)
-
-
-def commit_new_set(game_id: UUID, won: bool, exp_earned: int = 0, gp_earned: int = 0, other: str = None, query: str = None):
+def commit_new_set(won: bool, exp_earned: int = 0, gp_earned: int = 0, other: str = None, query: str = None):
     """
     :raise: ezyapi.mysql_connection.DatabaseConnexionError
     :raise: ezyapi.game_manager.AlreadyCommitted
@@ -474,8 +478,9 @@ def commit_new_set(game_id: UUID, won: bool, exp_earned: int = 0, gp_earned: int
     verification()
     exp = int(exp_earned) if int(exp_earned) >= 0 else 0
     gp = int(gp_earned) if int(gp_earned) >= 0 else 0
-    connect.execute(f"""INSERT sets(player, game, won, exp, gp, other) VALUES ("{__user.get_uuid()}", "{game_id}",
-            {1 if won else 0}, {exp}, {gp}, {"null" if other is None else ('"' + str(other) + '"')})""")
+    connect.execute(f"""INSERT sets(player, game, won, exp, gp, other) VALUES ("{__user.get_uuid()}",
+                        "{__game_info.uuid}", {1 if won else 0}, {exp}, {gp},
+                        {"null" if other is None else ('"' + str(other) + '"')})""")
     connect.commit()
     connect.execute(f"""UPDATE `users` SET `exp`=(SELECT `exp` WHERE `uuid`="{__user.get_uuid()}") + {exp}
                         WHERE `uuid`="{__user.get_uuid()}\"""")
