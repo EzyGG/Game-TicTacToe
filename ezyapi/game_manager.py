@@ -271,7 +271,7 @@ class Resource:
             f.write(self.bin)
 
 
-__API_VERSION: GameVersion = GameVersion("v2.3")
+__API_VERSION: GameVersion = GameVersion("v2.4")
 __current_version: GameVersion = None
 __game_info: GameInfo = None
 __user: sessions.User = None

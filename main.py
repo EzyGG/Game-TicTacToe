@@ -10,7 +10,7 @@ from random import randint, choice, shuffle
 
 
 GAME_UUID = UUID.parseUUID("14b34484-0b34-d080-71ee-13b3a8bd18c2")
-GAME_VERSION = manager.GameVersion("v1.4")
+GAME_VERSION = manager.GameVersion("v1.5")
 
 
 class TicTacToe:
@@ -259,22 +259,39 @@ class Error(Tk):
         self.cont_btn = Button(self.cont_frame, activebackground=self.app_bg, bg=self.app_bg, bd=0, relief=SOLID,
                                width=12, activeforeground=self.app_circle_color, fg=self.app_circle_color,
                                highlightcolor=self.app_circle_color, font=("", 12, "bold"), text="Continuer !",
-                               command=self.destroy)
+                               command=self.cont_cmd)
         self.cont_btn.pack(padx=1, pady=1)
         self.cont_frame.pack(side=LEFT, padx=5)
         self.quit_frame = Frame(self.opt_frame, bg=self.app_cross_color)
         self.quit_btn = Button(self.quit_frame, activebackground=self.app_bg, bg=self.app_bg, bd=0, relief=SOLID,
                                width=12, activeforeground=self.app_cross_color, fg=self.app_cross_color,
                                highlightcolor=self.app_cross_color, font=("", 12, "bold"), text="Quitter.",
-                               command=lambda: sys.exit(1))
+                               command=self.quit_cmd)
         self.quit_btn.pack(padx=1, pady=1)
         self.quit_frame.pack(side=RIGHT, padx=5)
         self.opt_frame.pack(side=BOTTOM, pady=5)
 
+        self.protocol("WM_DELETE_WINDOW", self.quit_cmd)
         self.bind("<Configure>", self.event_handler)
+        self.bind("<Return>", self.on_return)
         self.quit_btn.focus_set()
 
         self.mainloop()
+
+    def on_return(self, event=None):
+        if self.focus_get() == self.cont_btn:
+            self.cont_cmd()
+        elif self.focus_get() == self.quit_btn:
+            self.quit_cmd()
+
+    def cont_cmd(self, event=None):
+        self.destroy()
+
+    def quit_cmd(self, event=None):
+        try:
+            sys.exit(1)
+        except NameError:
+            quit(1)
 
     def event_handler(self, event=None):
         new_wrap = int(self.winfo_geometry().split("x")[0]) - 5
@@ -483,21 +500,24 @@ class Scores(Tk):
 
 CONTINUE = "\n\nIf you Continue, you will not be able to get rewards and update the ranking."
 try:
-    manager.setup(GAME_UUID, GAME_VERSION, __update=False)
-except manager.UserParameterExpected as e:
-    Error("UserParameterExpected", str(e) + "\nYou must run the game from the Launcher to avoid this error." + CONTINUE)
-except DatabaseConnexionError as e:
-    Error("DatabaseConnexionError", str(e) + "\nThe SQL Serveur is potentially down for maintenance...\nWait and Retry Later." + CONTINUE)
-except UserNotFoundException as e:
-    Error("UserNotFoundException", str(e) + "\nThe user information given does not match with any user." + CONTINUE)
-
-if not manager.updated():
-    u = Update(manager.__current_version, manager.__game_info.version)
-    u.start()
-    manager.update()
     try:
-        u.stop()
-    except Exception:
-        pass
+        manager.setup(GAME_UUID, GAME_VERSION, __update=False)
+    except manager.UserParameterExpected as e:
+        Error("UserParameterExpected",
+              str(e) + "\nYou must run the game from the Launcher to avoid this error." + CONTINUE)
+    except UserNotFoundException as e:
+        Error("UserNotFoundException", str(e) + "\nThe user information given does not match with any user." + CONTINUE)
+
+    if not manager.updated():
+        u = Update(manager.__current_version, manager.__game_info.version)
+        u.start()
+        manager.update()
+        try:
+            u.stop()
+        except Exception:
+            pass
+except DatabaseConnexionError as e:
+    Error("DatabaseConnexionError",
+          str(e) + "\nThe SQL Serveur is potentially down for maintenance...\nWait and Retry Later." + CONTINUE)
 
 TicTacToe().start()

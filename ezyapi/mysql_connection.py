@@ -15,21 +15,33 @@ def connexion():
     try:
         connection = mysql.connector.connect(host="luzog.xyz", user="dev", password="root", database="ezy")
         cursor = connection.cursor()
-    except mysql.connector.errors.InterfaceError:
+    except (mysql.connector.errors.InterfaceError, mysql.connector.errors.DatabaseError):
         raise DatabaseConnexionError()
 
 
 def execute(operation, param: tuple = (), multi: bool = False):
-    return cursor.execute(operation, param, multi)
+    try:
+        return cursor.execute(operation, param, multi)
+    except (mysql.connector.errors.InterfaceError, mysql.connector.errors.DatabaseError):
+        raise DatabaseConnexionError()
 
 
 def commit():
-    return connection.commit()
+    try:
+        return connection.commit()
+    except (mysql.connector.errors.InterfaceError, mysql.connector.errors.DatabaseError):
+        raise DatabaseConnexionError()
 
 
-def fetch(size: int = None):
-    return cursor.fetchall() if size is None else cursor.fetchone() if size == 1 else cursor.fetchmany(size)
+def fetch(size: int = None) -> list | tuple:
+    try:
+        return cursor.fetchall() if size is None else cursor.fetchone() if size == 1 else cursor.fetchmany(size)
+    except (mysql.connector.errors.InterfaceError, mysql.connector.errors.DatabaseError):
+        raise DatabaseConnexionError()
 
 
 def close():
-    return connection.close()
+    try:
+        return connection.close()
+    except (mysql.connector.errors.InterfaceError, mysql.connector.errors.DatabaseError):
+        raise DatabaseConnexionError()
